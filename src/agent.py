@@ -12,16 +12,42 @@ client = OpenAI(
   api_key=os.getenv("API"),
 )
 
-def ask_deepauto_ai():
+def data_collector_agent():
     chat_completion = client.chat.completions.create(
         model="openai/gpt-4o-mini-2024-07-18",
         messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "system", "content": "You are the Data Collector agent."},
             {
                 "role": "user",
                 "content": """
-    What are some highly rated restaurants in San Francisco?
-    Show all the steps and the reasoning process and Save report to a file named sanfrancisco.md.
+Input:
+```json
+total_budget: 3000 USD
+preferred_route: ["Tokyo", "Kyoto", "Osaka"]
+accommodation_type: "3-star hotel"
+travel_dates:
+start_date: "2025-10-01"
+end_date: "2025-10-05"
+special_interests: ["onsen", "local cuisine", "temple visits"]
+```
+Task:
+1. Using the fixed input above, fetch via APIs or web scraping:
+    - Round-trip flights (ICN ⇄ NRT/KIX)
+    - 3-star hotels in each city
+    - JR Pass cost and regional transfers
+    - Major attraction hours, public holidays, and festival dates
+    - 5-day weather forecasts for Tokyo, Kyoto, Osaka
+2. Aggregate into JSON:
+    {
+        "preferences": { …fixed… },
+        "flights": [ … ],
+        "hotels": [ … ],
+        "transport": { … },
+        "attractions": [ … ],
+        "weather": [ … ]
+    }
+3. Show all the steps and the reasoning process.
+4. Save this JSON to a file named itinerary.json.
     """,
             },
         ],
@@ -43,9 +69,9 @@ def ask_deepauto_ai():
                 },
             }
         ],
-        stream=True,
+        stream=True,    
     )
-
+       
     result = ""
     for chat in chat_completion:
         delta = chat.choices[0].delta

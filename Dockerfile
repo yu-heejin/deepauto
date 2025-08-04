@@ -1,5 +1,6 @@
 FROM python:3.9
 
+WORKDIR /deepauto
 RUN pip install --no-cache-dir uv
 RUN uv venv
 COPY ./requirements.txt ./requirements.txt
