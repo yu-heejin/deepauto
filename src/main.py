@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from src.agent import data_collector_agent, itinerary_builder_agent, budget_manager_agent
+from src.agent import data_collector_agent, itinerary_builder_agent, budget_manager_agent, report_generator_agent
 
 app = FastAPI()
 
@@ -9,3 +9,4 @@ def test_deepauto_ai():
     # TODO: 비동기 처리
     itinerary_builder_agent()
     budget_manager_agent()
+    report_generator_agent()

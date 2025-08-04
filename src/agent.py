@@ -106,6 +106,39 @@ Task:
     chat_completion = get_response_from_agent(system_prompt, user_prompt)
     response_to_file(chat_completion)
 
+def report_generator_agent():
+    itinerary = read_file("itinerary.json")
+    budget = read_file("budget.json")
+
+    system_prompt = (
+        "You are the Report Generator agent. "
+        "When you produce your final output, only respond by calling the save_to_file function; "
+        "do not emit any other plain-text response."
+    )
+    user_prompt = f"""
+Input:
+itinerary: 
+{itinerary}
+budget_report: 
+{budget}
+Task:
+1. Combine the two JSONs into a single report.
+2. Include sections:
+    - Trip Overview (2025-10-01 to 2025-10-05, route, total_budget)
+    - Day-by-Day Itinerary (with times, locations, notes)
+    - Budget Summary Table (allocated/spent/remaining)
+    - Reservation Checklist (flight#, hotel names, JR Pass)
+    - Packing & Pre-departure Reminders
+3. Highlight:
+    - Cost-saving tips
+    - Must-see spots
+    - Onsen & temple visit recommendations
+4. Show all the steps and the reasoning process.
+5. Save the report to a file named report.md.
+"""
+    chat_completion = get_response_from_agent(system_prompt, user_prompt)
+    response_to_file(chat_completion)
+    
 def get_response_from_agent(system_prompt: str, user_prompt: str):
     return client.chat.completions.create(
         model="openai/gpt-4o-mini-2024-07-18",
