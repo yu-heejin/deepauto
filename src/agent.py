@@ -1,25 +1,19 @@
 from openai import OpenAI
 from dotenv import load_dotenv
-from src.file_util import save_file, read_file
+from src.file_util import response_to_file, read_file
 
 import os
-import json
 
 load_dotenv()
 
 client = OpenAI(
-  base_url="https://api.deepauto.ai/openai/v1",
-  api_key=os.getenv("API"),
+    base_url="https://api.deepauto.ai/openai/v1",
+    api_key=os.getenv("API"),
 )
 
 def data_collector_agent():
-    chat_completion = client.chat.completions.create(
-        model="openai/gpt-4o-mini-2024-07-18",
-        messages=[
-            {"role": "system", "content": "You are the Data Collector agent."},
-            {
-                "role": "user",
-                "content": """
+    system_prompt = "You are the Data Collector agent."
+    user_prompt = """
 Input:
 ```json
 total_budget: 3000 USD
@@ -47,54 +41,18 @@ Task:
         "weather": [ … ]
     }
 3. Show all the steps and the reasoning process.
-4. Save this JSON to a file named itinerary.json.
-    """,
-            },
-        ],
-        tool_choice="auto",
-        tools=[
-            {
-                "type": "function",
-                "function": {
-                    "name": "save_to_file",
-                    "description": "Save content to a local file",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "filename": {"type": "string", "description": "The name of the file to save to"},
-                            "content": {"type": "string", "description": "The content to write into the file"},
-                        },
-                        "required": ["filename", "content"],
-                    },
-                },
-            }
-        ],
-        stream=True,    
-    )
-       
-    result = ""
-    for chat in chat_completion:
-        delta = chat.choices[0].delta
-
-        if delta.tool_calls is not None and delta.tool_calls[0].function is not None:
-            result += delta.tool_calls[0].function.arguments or ""
-
-        if chat.choices[0].delta.content is not None:
-            print(chat.choices[0].delta.content, end="")
-
-    result_json = json.loads(result)
-    save_file(result_json["filename"], result_json["content"])
+4. Save this JSON to a file named itinerary_for_read.json.
+"""
+    
+    chat_completion = get_response_from_agent(system_prompt, user_prompt)
+    response_to_file(chat_completion)
 
 def itinerary_builder_agent():
-    chat_completion = client.chat.completions.create(
-        model="openai/gpt-4o-mini-2024-07-18",
-        messages=[
-            {"role": "system", "content": "You are the Itinerary Builder agent."},
-            {
-                "role": "user",
-                "content": """
+    plan = read_file("itinerary_for_read.json")
+    system_prompt = "You are the Itinerary Builder agent."
+    user_prompt = f"""
 Input:
-/deepauto/itinerary.json
+{plan}
 Task:
 1. Assign days 1–5 to Tokyo → Kyoto → Osaka.
 2. For each day:
@@ -104,73 +62,27 @@ Task:
     - Evening: transfer planning & dinner
 3. Respect attraction hours and weather (e.g., rainy afternoon → indoor).
 4. Output itinerary JSON:
-    
-    {
-    
-    "day1": { … },
-    
-    …,
-    
-    "day5": { … }
-    
-    }
-    
-
+    {{
+        "day1": {{ … }},
+        …,
+        "day5": {{ … }}
+    }}
 5. Show all the steps and the reasoning process.
 6. Save this JSON to a file named itinerary.json.
-    """,
-            },
-        ],
-        tool_choice="auto",
-        tools=[
-            {
-                "type": "function",
-                "function": {
-                    "name": "save_to_file",
-                    "description": "Save content to a local file",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "filename": {"type": "string", "description": "The name of the file to save to"},
-                            "content": {"type": "string", "description": "The content to write into the file"},
-                        },
-                        "required": ["filename", "content"],
-                    },
-                },
-            }
-        ],
-        stream=True,    
-    )
+"""
 
-    result = ""
-    for chat in chat_completion:
-        delta = chat.choices[0].delta
-
-        if delta.tool_calls is not None and delta.tool_calls[0].function is not None:
-            result += delta.tool_calls[0].function.arguments or ""
-
-        if chat.choices[0].delta.content is not None:
-            print(chat.choices[0].delta.content, end="")
-
-    result_json = json.loads(result)
-    save_file(result_json["filename"], result_json["content"])
+    chat_completion = get_response_from_agent(system_prompt, user_prompt)
+    response_to_file(chat_completion)
 
 def budget_manager_agent():
-    plan = read_file("itinerary.json")  # 혹은 file_util.read_file
-    chat_completion = client.chat.completions.create(
-        model="openai/gpt-4o-mini-2024-07-18",
-        messages=[
-            {"role": "system", "content": "You are the Budget Manager agent."},
-            {
-                "role": "user",
-                "content": f"""
+    plan = read_file("itinerary_for_read.json")
+    system_prompt = "You are the Budget Manager agent."
+    user_prompt = f"""
 Input:
 ```json
 {plan}
 ```
-
 Task:
-
 1. Allocate 3000 USD:
     - Flights: 800 USD
     - Accommodation: 1000 USD
@@ -182,15 +94,26 @@ Task:
     - Suggest cheaper 2-star hotel or local bus vs. taxi.
 4. Produce budget_report JSON:
 {{
-"allocated": {{ … }},
-"spent": {{ … }},
-"remaining": {{ … }},
-"alternatives": [ … ]
+    "allocated": {{ … }},
+    "spent": {{ … }},
+    "remaining": {{ … }},
+    "alternatives": [ … ]
 }}
-
 5. Show all the steps and the reasoning process.
 6. Save this JSON to a file named budget.json.
-    """,
+"""
+
+    chat_completion = get_response_from_agent(system_prompt, user_prompt)
+    response_to_file(chat_completion)
+
+def get_response_from_agent(system_prompt: str, user_prompt: str):
+    return client.chat.completions.create(
+        model="openai/gpt-4o-mini-2024-07-18",
+        messages=[
+            {"role": "system", "content": f"{system_prompt}"},
+            {
+                "role": "user",
+                "content": f"{user_prompt}"
             },
         ],
         tool_choice="auto",
@@ -213,16 +136,3 @@ Task:
         ],
         stream=True,    
     )
-
-    result = ""
-    for chat in chat_completion:
-        delta = chat.choices[0].delta
-
-        if delta.tool_calls is not None and delta.tool_calls[0].function is not None:
-            result += delta.tool_calls[0].function.arguments or ""
-
-        if chat.choices[0].delta.content is not None:
-            print(chat.choices[0].delta.content, end="")
-
-    result_json = json.loads(result)
-    save_file(result_json["filename"], result_json["content"])
