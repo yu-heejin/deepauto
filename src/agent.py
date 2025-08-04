@@ -1,6 +1,6 @@
 from openai import OpenAI
 from dotenv import load_dotenv
-from src.file_util import save_file
+from src.file_util import save_file, read_file
 
 import os
 import json
@@ -86,7 +86,6 @@ Task:
     save_file(result_json["filename"], result_json["content"])
 
 def itinerary_builder_agent():
-    file_path = "/deepauto/itinerary.json"
     chat_completion = client.chat.completions.create(
         model="openai/gpt-4o-mini-2024-07-18",
         messages=[
@@ -119,6 +118,78 @@ Task:
 
 5. Show all the steps and the reasoning process.
 6. Save this JSON to a file named itinerary.json.
+    """,
+            },
+        ],
+        tool_choice="auto",
+        tools=[
+            {
+                "type": "function",
+                "function": {
+                    "name": "save_to_file",
+                    "description": "Save content to a local file",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "filename": {"type": "string", "description": "The name of the file to save to"},
+                            "content": {"type": "string", "description": "The content to write into the file"},
+                        },
+                        "required": ["filename", "content"],
+                    },
+                },
+            }
+        ],
+        stream=True,    
+    )
+
+    result = ""
+    for chat in chat_completion:
+        delta = chat.choices[0].delta
+
+        if delta.tool_calls is not None and delta.tool_calls[0].function is not None:
+            result += delta.tool_calls[0].function.arguments or ""
+
+        if chat.choices[0].delta.content is not None:
+            print(chat.choices[0].delta.content, end="")
+
+    result_json = json.loads(result)
+    save_file(result_json["filename"], result_json["content"])
+
+def budget_manager_agent():
+    plan = read_file("itinerary.json")  # 혹은 file_util.read_file
+    chat_completion = client.chat.completions.create(
+        model="openai/gpt-4o-mini-2024-07-18",
+        messages=[
+            {"role": "system", "content": "You are the Budget Manager agent."},
+            {
+                "role": "user",
+                "content": f"""
+Input:
+```json
+{plan}
+```
+
+Task:
+
+1. Allocate 3000 USD:
+    - Flights: 800 USD
+    - Accommodation: 1000 USD
+    - Transport (non-JR): 200 USD
+    - Meals: 600 USD
+    - Entrance fees: 400 USD
+2. Calculate spent vs. remaining using provided prices.
+3. If any category exceeds allocation:
+    - Suggest cheaper 2-star hotel or local bus vs. taxi.
+4. Produce budget_report JSON:
+{{
+"allocated": {{ … }},
+"spent": {{ … }},
+"remaining": {{ … }},
+"alternatives": [ … ]
+}}
+
+5. Show all the steps and the reasoning process.
+6. Save this JSON to a file named budget.json.
     """,
             },
         ],
