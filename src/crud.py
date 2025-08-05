@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import BackgroundTasks
 
 from src.agent import data_collector_agent, itinerary_builder_agent, budget_manager_agent, report_generator_agent
@@ -25,9 +26,12 @@ def start_workflow(background_task: BackgroundTasks):
 
     return workflow.id
 
-def run_agents(workflow_id: int):
-    data_collector_agent()
-    # TODO: 비동기 처리
-    itinerary_builder_agent()
-    budget_manager_agent()
-    report_generator_agent()
+async def run_agents(workflow_id: int):
+    await data_collector_agent()
+    
+    await asyncio.gather(
+        itinerary_builder_agent(),
+        budget_manager_agent(),
+    )
+
+    await report_generator_agent()

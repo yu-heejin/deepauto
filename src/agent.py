@@ -1,4 +1,4 @@
-from openai import OpenAI
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 from src.file_util import response_to_file, read_file
 
@@ -6,12 +6,12 @@ import os
 
 load_dotenv()
 
-client = OpenAI(
+client = AsyncOpenAI(
     base_url="https://api.deepauto.ai/openai/v1",
     api_key=os.getenv("API"),
 )
 
-def data_collector_agent():
+async def data_collector_agent():
     system_prompt = "You are the Data Collector agent."
     user_prompt = """
 Input:
@@ -44,10 +44,10 @@ Task:
 4. Save this JSON to a file named itinerary_for_read.json.
 """
     
-    chat_completion = get_response_from_agent(system_prompt, user_prompt)
-    response_to_file(chat_completion)
+    chat_completion = await get_response_from_agent(system_prompt, user_prompt)
+    await response_to_file(chat_completion)
 
-def itinerary_builder_agent():
+async def itinerary_builder_agent():
     plan = read_file("itinerary_for_read.json")
     system_prompt = "You are the Itinerary Builder agent."
     user_prompt = f"""
@@ -71,10 +71,10 @@ Task:
 6. Save this JSON to a file named itinerary.json.
 """
 
-    chat_completion = get_response_from_agent(system_prompt, user_prompt)
-    response_to_file(chat_completion)
+    chat_completion = await get_response_from_agent(system_prompt, user_prompt)
+    await response_to_file(chat_completion)
 
-def budget_manager_agent():
+async def budget_manager_agent():
     plan = read_file("itinerary_for_read.json")
     system_prompt = "You are the Budget Manager agent."
     user_prompt = f"""
@@ -103,10 +103,10 @@ Task:
 6. Save this JSON to a file named budget.json.
 """
 
-    chat_completion = get_response_from_agent(system_prompt, user_prompt)
-    response_to_file(chat_completion)
+    chat_completion = await get_response_from_agent(system_prompt, user_prompt)
+    await response_to_file(chat_completion)
 
-def report_generator_agent():
+async def report_generator_agent():
     itinerary = read_file("itinerary.json")
     budget = read_file("budget.json")
 
@@ -136,17 +136,17 @@ Task:
 4. Show all the steps and the reasoning process.
 5. Save the report to a file named report.md.
 """
-    chat_completion = get_response_from_agent(system_prompt, user_prompt)
-    response_to_file(chat_completion)
+    chat_completion = await get_response_from_agent(system_prompt, user_prompt)
+    await response_to_file(chat_completion)
     
-def get_response_from_agent(system_prompt: str, user_prompt: str):
-    return client.chat.completions.create(
+async def get_response_from_agent(system_prompt: str, user_prompt: str):
+    return await client.chat.completions.create(
         model="openai/gpt-4o-mini-2024-07-18",
         messages=[
-            {"role": "system", "content": f"{system_prompt}"},
+            {"role": "system", "content": system_prompt},
             {
                 "role": "user",
-                "content": f"{user_prompt}"
+                "content": user_prompt
             },
         ],
         tool_choice="auto",
