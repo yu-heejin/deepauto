@@ -1,14 +1,20 @@
-from sqlalchemy import Column, Integer, DateTime, Boolean
+from sqlalchemy import Column, Integer, DateTime, ForeignKey
 from datetime import datetime
 from sqlalchemy.dialects.mysql import ENUM as MySQLEnum
 
 from app.db.db import Base
 from app.models.workflow_status_type import WorkflowStatusType
 
-class Workflow(Base):
-    __tablename__ = "workflow"
+class WorkflowAgent(Base):
+    __tablename__ = "workflow_agent"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    workflow_id = Column(
+        Integer,
+        ForeignKey("workflow.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     status = Column(
         MySQLEnum(*[e.value for e in WorkflowStatusType], name="workflow_status_enum"),
         nullable=False,

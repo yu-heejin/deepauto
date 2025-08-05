@@ -4,7 +4,7 @@ from openai import AsyncOpenAI
 from fastapi import BackgroundTasks
 
 from app.utils.file import response_to_file, read_file
-from app.models.workflow_status import WorkflowStatus
+from app.models.workflow_status_type import WorkflowStatusType
 from app.crud.crud import update_workflow_status, create_workflow_status
 from app.core.config import env_config
 
@@ -38,14 +38,14 @@ async def run_agents(workflow_id: int):
     )
     await report_generator_agent(workflow_id)
 
-    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.COMPLETED)
+    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatusType.COMPLETED)
 
 async def data_collector_agent(workflow_id: int):
     """
     Data Collector Agent 실행 함수
     @param workflow_id 실행중인 워크플로우의 아이디
     """
-    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.DATA_COLLECTOR_START)
+    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatusType.DATA_COLLECTOR_START)
 
     system_prompt = "You are the Data Collector agent."
     user_prompt = """
@@ -81,7 +81,7 @@ Task:
     
     chat_completion = await get_response_from_agent(system_prompt, user_prompt)
     await response_to_file(chat_completion)
-    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.DATA_COLLECTOR_DONE)
+    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatusType.DATA_COLLECTOR_DONE)
 
 async def itinerary_builder_agent(workflow_id: int):
     """
@@ -90,7 +90,7 @@ async def itinerary_builder_agent(workflow_id: int):
     """
 
     # TODO: 두 경우 동시 실행 시 Lock 문제 확인
-    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.ITINERARY_AND_BUDGET_START)
+    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatusType.ITINERARY_AND_BUDGET_START)
 
     plan = read_file("itinerary_for_read.json")
     system_prompt = "You are the Itinerary Builder agent."
@@ -118,7 +118,7 @@ Task:
     chat_completion = await get_response_from_agent(system_prompt, user_prompt)
     await response_to_file(chat_completion)
 
-    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.ITINERARY_AND_BUDGET_DONE)
+    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatusType.ITINERARY_AND_BUDGET_DONE)
 
 async def budget_manager_agent(workflow_id: int):
     """
@@ -127,7 +127,7 @@ async def budget_manager_agent(workflow_id: int):
     """
 
     # TODO: 두 경우 동시 실행 시 Lock 문제 확인
-    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.ITINERARY_AND_BUDGET_START)
+    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatusType.ITINERARY_AND_BUDGET_START)
 
     plan = read_file("itinerary_for_read.json")
     system_prompt = "You are the Budget Manager agent."
@@ -159,14 +159,14 @@ Task:
 
     chat_completion = await get_response_from_agent(system_prompt, user_prompt)
     await response_to_file(chat_completion)
-    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.ITINERARY_AND_BUDGET_DONE)
+    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatusType.ITINERARY_AND_BUDGET_DONE)
 
 async def report_generator_agent(workflow_id: int):
     """
     Report Generator Agent 실행 함수
     @param workflow_id 실행중인 워크플로우의 아이디
     """
-    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.REPORT_GENERATOR_START)
+    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatusType.REPORT_GENERATOR_START)
 
     itinerary = read_file("itinerary.json")
     budget = read_file("budget.json")
@@ -200,7 +200,7 @@ Task:
     chat_completion = await get_response_from_agent(system_prompt, user_prompt)
     await response_to_file(chat_completion)
     
-    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.REPORT_GENERATOR_DONE)
+    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatusType.REPORT_GENERATOR_DONE)
     
 async def get_response_from_agent(system_prompt: str, user_prompt: str):
     return await client.chat.completions.create(
