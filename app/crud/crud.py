@@ -1,3 +1,4 @@
+import asyncio
 from app.models.workflow import Workflow
 from app.models.workflow_agent import WorkflowAgent
 from app.models.workflow_agent_response import WorkflowAgentResponse
@@ -62,3 +63,31 @@ def create_workflow_agent_response(workflow_id: int, workflow_agent_id: int, res
         db.refresh(agent_response)
     
     return agent_response.id
+
+def get_workflow_status(workflow_id: int):
+    with connect_database() as db:
+        workflow = db.query(Workflow).filter(Workflow.id == workflow_id).first()
+
+    results = {
+        "status": workflow.status,
+        "start_at": workflow.created_at.isoformat(),
+        "updated_at": workflow.updated_at.isoformat()
+    }
+
+    return results
+
+def get_workflow_agent_response(workflow_id: int):
+    with connect_database() as db:
+        # 해당 워크플로우에 해당하는 모든 에이전트 목록들을 반환한다.
+        agents = db.query(WorkflowAgentResponse).filter(WorkflowAgentResponse.workflow_id == workflow_id).all()
+
+    results = [
+        {
+            "response": agent.response,
+            "start_at": agent.created_at.isoformat(),
+            "updated_at": agent.updated_at.isoformat()
+        }
+        for agent in agents
+    ]
+
+    return results
