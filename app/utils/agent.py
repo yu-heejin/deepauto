@@ -8,6 +8,11 @@ from app.models.workflow_status_type import WorkflowStatusType
 from app.models.workflow_agent_type import WorkflowAgentType
 from app.crud.crud import update_workflow_status, create_workflow_status, create_workflow_agent_response, create_workflow_agent, update_workflow_agent_status
 from app.core.config import env_config
+from app.utils.websocket import (
+    broadcast_agent_status, 
+    broadcast_agent_complete_response,
+    broadcast_workflow_status
+)
 
 client = AsyncOpenAI(
     base_url=env_config.base_url,
@@ -32,6 +37,10 @@ async def run_agents(workflow_id: int):
     agent를 순서대로 비동기식으로 실행한다.
     @param workflow_id 실행중인 워크플로우의 아이디
     """
+    # Workflow 시작 상태 브로드캐스트
+    await broadcast_workflow_status(workflow_id, WorkflowStatusType.RUNNING.value)
+    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatusType.RUNNING)
+    
     await data_collector_agent(workflow_id)
     await asyncio.gather(
         itinerary_builder_agent(workflow_id),
@@ -40,17 +49,25 @@ async def run_agents(workflow_id: int):
     await report_generator_agent(workflow_id)
 
     update_workflow_status(workflow_id=workflow_id, status=WorkflowStatusType.COMPLETED)
+    
+    # Workflow 완료 상태 브로드캐스트
+    await broadcast_workflow_status(workflow_id, WorkflowStatusType.COMPLETED.value)
 
 async def data_collector_agent(workflow_id: int):
     """
     Data Collector Agent 실행 함수
     @param workflow_id 실행중인 워크플로우의 아이디
     """
+    
     agent_id = create_workflow_agent(
         workflow_id=workflow_id, 
         agent_name=WorkflowAgentType.DATA_COLLECTOR,
         status=WorkflowStatusType.RUNNING
     )
+    await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.DATA_COLLECTOR.value, WorkflowStatusType.RUNNING.value)
+    
+    # Agent 시작 상태 브로드캐스트
+    
     system_prompt = "You are the Data Collector agent."
     user_prompt = """
 Input:
@@ -87,12 +104,17 @@ Task:
     response = await to_json(chat_completion)
     if response is None:
         update_workflow_agent_status(agent_id, WorkflowStatusType.FAILED)
+        await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.DATA_COLLECTOR.value, WorkflowStatusType.FAILED.value)
     else:
         await save_to_file(response=response)
         await asyncio.gather(
             asyncio.to_thread(create_workflow_agent_response, workflow_id, agent_id, response_data=response),
             asyncio.to_thread(update_workflow_agent_status, agent_id, WorkflowStatusType.COMPLETED),
         )
+        
+        # 완료된 응답 브로드캐스트
+        await broadcast_agent_complete_response(workflow_id, agent_id, WorkflowAgentType.DATA_COLLECTOR.value, response)
+        await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.DATA_COLLECTOR.value, WorkflowStatusType.COMPLETED.value)
 
 async def itinerary_builder_agent(workflow_id: int):
     """
@@ -104,6 +126,9 @@ async def itinerary_builder_agent(workflow_id: int):
         agent_name=WorkflowAgentType.ITINERARY_BUILDER,
         status=WorkflowStatusType.RUNNING
     )
+
+    # Agent 시작 상태 브로드캐스트
+    await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.ITINERARY_BUILDER.value, WorkflowStatusType.RUNNING.value)
 
     plan = read_file("itinerary_for_read.json")
     system_prompt = "You are the Itinerary Builder agent."
@@ -127,12 +152,13 @@ Task:
 5. Show all the steps and the reasoning process.
 6. Save this JSON to a file named itinerary.json.
 """
-
+    
     chat_completion = await get_response_from_agent(system_prompt, user_prompt)
     response = await to_json(chat_completion=chat_completion)
     
     if response is None:
         update_workflow_agent_status(agent_id, WorkflowStatusType.FAILED)
+        await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.ITINERARY_BUILDER.value, WorkflowStatusType.FAILED.value)
     else:
         await save_to_file(response=response)
         # 에이전트 응답 저장
@@ -140,6 +166,10 @@ Task:
             asyncio.to_thread(create_workflow_agent_response, workflow_id, agent_id, response_data=response),
             asyncio.to_thread(update_workflow_agent_status, agent_id, WorkflowStatusType.COMPLETED),
         )
+        
+        # 완료된 응답 브로드캐스트
+        await broadcast_agent_complete_response(workflow_id, agent_id, WorkflowAgentType.ITINERARY_BUILDER.value, response)
+        await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.ITINERARY_BUILDER.value, WorkflowStatusType.COMPLETED.value)
 
 async def budget_manager_agent(workflow_id: int):
     """
@@ -152,6 +182,9 @@ async def budget_manager_agent(workflow_id: int):
         agent_name=WorkflowAgentType.BUDGET_MANAGER,
         status=WorkflowStatusType.RUNNING
     )
+
+    # Agent 시작 상태 브로드캐스트
+    await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.BUDGET_MANAGER.value, WorkflowStatusType.RUNNING.value)
 
     plan = read_file("itinerary_for_read.json")
     system_prompt = "You are the Budget Manager agent."
@@ -180,18 +213,22 @@ Task:
 5. Show all the steps and the reasoning process.
 6. Save this JSON to a file named budget.json.
 """
-
-    chat_completion = await get_response_from_agent(system_prompt, user_prompt)
+    chat_completion = await get_response_from_agent(system_prompt, user_prompt)    
     response = await to_json(chat_completion=chat_completion)
-
+    
     if response is None:
         update_workflow_agent_status(agent_id, WorkflowStatusType.FAILED)
+        await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.BUDGET_MANAGER.value, WorkflowStatusType.FAILED.value)
     else:
         await save_to_file(response=response)
         await asyncio.gather(
             asyncio.to_thread(create_workflow_agent_response, workflow_id, agent_id, response_data=response),
             asyncio.to_thread(update_workflow_agent_status, agent_id, WorkflowStatusType.COMPLETED),
         )
+        
+        # 완료된 응답 브로드캐스트
+        await broadcast_agent_complete_response(workflow_id, agent_id, WorkflowAgentType.BUDGET_MANAGER.value, response)
+        await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.BUDGET_MANAGER.value, WorkflowStatusType.COMPLETED.value)
 
 async def report_generator_agent(workflow_id: int):
     """
@@ -204,6 +241,9 @@ async def report_generator_agent(workflow_id: int):
         agent_name=WorkflowAgentType.REPORT_GENERATOR,
         status=WorkflowStatusType.RUNNING
     )
+
+    # Agent 시작 상태 브로드캐스트
+    await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.REPORT_GENERATOR.value, WorkflowStatusType.RUNNING.value)
 
     itinerary = read_file("itinerary.json")
     budget = read_file("budget.json")
@@ -234,17 +274,23 @@ Task:
 4. Show all the steps and the reasoning process.
 5. Save the report to a file named report.md.
 """
+    
     chat_completion = await get_response_from_agent(system_prompt, user_prompt)
     response = await to_json(chat_completion=chat_completion)
 
     if response is None:
         update_workflow_agent_status(agent_id, WorkflowStatusType.FAILED)
+        await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.REPORT_GENERATOR.value, WorkflowStatusType.FAILED.value)
     else:
         await save_to_file(response=response)
         await asyncio.gather(
             asyncio.to_thread(create_workflow_agent_response, workflow_id, agent_id, response_data=response),
             asyncio.to_thread(update_workflow_agent_status, agent_id, WorkflowStatusType.COMPLETED),
         )
+        
+        # 완료된 응답 브로드캐스트
+        await broadcast_agent_complete_response(workflow_id, agent_id, WorkflowAgentType.REPORT_GENERATOR.value, response)
+        await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.REPORT_GENERATOR.value, WorkflowStatusType.COMPLETED.value)
 
 async def get_response_from_agent(system_prompt: str, user_prompt: str):
     return await client.chat.completions.create(
