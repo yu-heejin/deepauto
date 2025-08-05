@@ -7,7 +7,7 @@
 - Docker
 - docker-compose
 
-# 실행 방법 (docker-compose)
+## 실행 방법 (docker-compose)
 
 ```shell
 docker-compose up -d
