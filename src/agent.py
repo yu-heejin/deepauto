@@ -1,8 +1,15 @@
+import os
+import asyncio
+
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
-from src.file_util import response_to_file, read_file
+from fastapi import BackgroundTasks
 
-import os
+from src.file_util import response_to_file, read_file
+from src.status import WorkflowStatus
+from src.db import connect_database
+from src.crud import update_workflow_status
+from src.model import Workflow
 
 load_dotenv()
 
@@ -11,7 +18,39 @@ client = AsyncOpenAI(
     api_key=os.getenv("API"),
 )
 
-async def data_collector_agent():
+def start_workflow(background_task: BackgroundTasks):
+    """
+    agent를 차례대로 실행하는 workflow를 실행시킨다.
+    @return workflow id
+    """
+    workflow = Workflow(status=WorkflowStatus.STARTED.value)
+
+    with connect_database() as db:
+        # workflow 시작 상태 저장
+        db.add(workflow)
+        db.commit()
+        db.refresh(workflow)
+
+        # 백그라운드에서 에이전트 실행
+        background_task.add_task(run_agents, workflow.id)
+
+    return workflow.id
+
+async def run_agents(workflow_id: int):
+    await data_collector_agent(workflow_id)
+    
+    await asyncio.gather(
+        itinerary_builder_agent(workflow_id),
+        budget_manager_agent(workflow_id),
+    )
+
+    await report_generator_agent(workflow_id)
+
+    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.COMPLETED)
+
+async def data_collector_agent(workflow_id: int):
+    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.DATA_COLLECTOR_START)
+
     system_prompt = "You are the Data Collector agent."
     user_prompt = """
 Input:
@@ -46,8 +85,11 @@ Task:
     
     chat_completion = await get_response_from_agent(system_prompt, user_prompt)
     await response_to_file(chat_completion)
+    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.DATA_COLLECTOR_DONE)
 
-async def itinerary_builder_agent():
+async def itinerary_builder_agent(workflow_id: int):
+    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.ITINERARY_AND_BUDGET_START)
+
     plan = read_file("itinerary_for_read.json")
     system_prompt = "You are the Itinerary Builder agent."
     user_prompt = f"""
@@ -73,8 +115,11 @@ Task:
 
     chat_completion = await get_response_from_agent(system_prompt, user_prompt)
     await response_to_file(chat_completion)
+    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.ITINERARY_AND_BUDGET_DONE)
 
-async def budget_manager_agent():
+async def budget_manager_agent(workflow_id: int):
+    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.ITINERARY_AND_BUDGET_START)
+
     plan = read_file("itinerary_for_read.json")
     system_prompt = "You are the Budget Manager agent."
     user_prompt = f"""
@@ -105,8 +150,11 @@ Task:
 
     chat_completion = await get_response_from_agent(system_prompt, user_prompt)
     await response_to_file(chat_completion)
+    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.ITINERARY_AND_BUDGET_DONE)
 
-async def report_generator_agent():
+async def report_generator_agent(workflow_id: int):
+    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.REPORT_GENERATOR_START)
+
     itinerary = read_file("itinerary.json")
     budget = read_file("budget.json")
 
@@ -138,6 +186,7 @@ Task:
 """
     chat_completion = await get_response_from_agent(system_prompt, user_prompt)
     await response_to_file(chat_completion)
+    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.REPORT_GENERATOR_DONE)
     
 async def get_response_from_agent(system_prompt: str, user_prompt: str):
     return await client.chat.completions.create(

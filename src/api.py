@@ -1,6 +1,6 @@
 from fastapi import APIRouter, BackgroundTasks
 
-from src.crud import start_workflow
+from src.agent import start_workflow
 
 agent_api = APIRouter(
     prefix="/workflows",
