@@ -44,7 +44,7 @@ async def disconnect(websocket: WebSocket, workflow_id: int):
     if workflow_id in active_connections:
         if websocket in active_connections[workflow_id]:
             active_connections[workflow_id].remove(websocket)
-            logger.info(f"WebSocket disconnected for workflow {workflow_id}")
+            print(f"WebSocket disconnected for workflow {workflow_id}")
         
         # 해당 workflow_id에 더 이상 연결이 없으면 키 삭제
         if not active_connections[workflow_id]:
