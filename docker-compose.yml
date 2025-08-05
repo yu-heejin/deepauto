@@ -15,9 +15,9 @@ services:
       - --collation-server=utf8mb4_unicode_ci
     healthcheck:
       test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
-      interval: 10s
-      timeout: 10s
-      retries: 10
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
     build: .
