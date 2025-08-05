@@ -3,9 +3,10 @@ import asyncio
 from openai import AsyncOpenAI
 from fastapi import BackgroundTasks
 
-from app.utils.file import response_to_file, read_file
+from app.utils.file import save_to_file, read_file, to_json
 from app.models.workflow_status_type import WorkflowStatusType
-from app.crud.crud import update_workflow_status, create_workflow_status
+from app.models.workflow_agent_type import WorkflowAgentType
+from app.crud.crud import update_workflow_status, create_workflow_status, create_workflow_agent_response, create_workflow_agent, update_workflow_agent_status
 from app.core.config import env_config
 
 client = AsyncOpenAI(
@@ -45,8 +46,11 @@ async def data_collector_agent(workflow_id: int):
     Data Collector Agent 실행 함수
     @param workflow_id 실행중인 워크플로우의 아이디
     """
-    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatusType.DATA_COLLECTOR_START)
-
+    agent_id = create_workflow_agent(
+        workflow_id=workflow_id, 
+        agent_name=WorkflowAgentType.DATA_COLLECTOR,
+        status=WorkflowStatusType.RUNNING
+    )
     system_prompt = "You are the Data Collector agent."
     user_prompt = """
 Input:
@@ -80,17 +84,26 @@ Task:
 """
     
     chat_completion = await get_response_from_agent(system_prompt, user_prompt)
-    await response_to_file(chat_completion)
-    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatusType.DATA_COLLECTOR_DONE)
+    response = await to_json(chat_completion)
+    if response is None:
+        update_workflow_agent_status(agent_id, WorkflowStatusType.FAILED)
+    else:
+        await save_to_file(response=response)
+        await asyncio.gather(
+            asyncio.to_thread(create_workflow_agent_response, workflow_id, agent_id, response_data=response),
+            asyncio.to_thread(update_workflow_agent_status, agent_id, WorkflowStatusType.COMPLETED),
+        )
 
 async def itinerary_builder_agent(workflow_id: int):
     """
     Itinerary Builder Agent 실행 함수
     @param workflow_id 실행중인 워크플로우의 아이디
     """
-
-    # TODO: 두 경우 동시 실행 시 Lock 문제 확인
-    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatusType.ITINERARY_AND_BUDGET_START)
+    agent_id = create_workflow_agent(
+        workflow_id=workflow_id, 
+        agent_name=WorkflowAgentType.ITINERARY_BUILDER,
+        status=WorkflowStatusType.RUNNING
+    )
 
     plan = read_file("itinerary_for_read.json")
     system_prompt = "You are the Itinerary Builder agent."
@@ -116,9 +129,17 @@ Task:
 """
 
     chat_completion = await get_response_from_agent(system_prompt, user_prompt)
-    await response_to_file(chat_completion)
-
-    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatusType.ITINERARY_AND_BUDGET_DONE)
+    response = await to_json(chat_completion=chat_completion)
+    
+    if response is None:
+        update_workflow_agent_status(agent_id, WorkflowStatusType.FAILED)
+    else:
+        await save_to_file(response=response)
+        # 에이전트 응답 저장
+        await asyncio.gather(
+            asyncio.to_thread(create_workflow_agent_response, workflow_id, agent_id, response_data=response),
+            asyncio.to_thread(update_workflow_agent_status, agent_id, WorkflowStatusType.COMPLETED),
+        )
 
 async def budget_manager_agent(workflow_id: int):
     """
@@ -126,8 +147,11 @@ async def budget_manager_agent(workflow_id: int):
     @param workflow_id 실행중인 워크플로우의 아이디
     """
 
-    # TODO: 두 경우 동시 실행 시 Lock 문제 확인
-    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatusType.ITINERARY_AND_BUDGET_START)
+    agent_id = create_workflow_agent(
+        workflow_id=workflow_id, 
+        agent_name=WorkflowAgentType.BUDGET_MANAGER,
+        status=WorkflowStatusType.RUNNING
+    )
 
     plan = read_file("itinerary_for_read.json")
     system_prompt = "You are the Budget Manager agent."
@@ -158,15 +182,28 @@ Task:
 """
 
     chat_completion = await get_response_from_agent(system_prompt, user_prompt)
-    await response_to_file(chat_completion)
-    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatusType.ITINERARY_AND_BUDGET_DONE)
+    response = await to_json(chat_completion=chat_completion)
+
+    if response is None:
+        update_workflow_agent_status(agent_id, WorkflowStatusType.FAILED)
+    else:
+        await save_to_file(response=response)
+        await asyncio.gather(
+            asyncio.to_thread(create_workflow_agent_response, workflow_id, agent_id, response_data=response),
+            asyncio.to_thread(update_workflow_agent_status, agent_id, WorkflowStatusType.COMPLETED),
+        )
 
 async def report_generator_agent(workflow_id: int):
     """
     Report Generator Agent 실행 함수
     @param workflow_id 실행중인 워크플로우의 아이디
     """
-    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatusType.REPORT_GENERATOR_START)
+
+    agent_id = create_workflow_agent(
+        workflow_id=workflow_id, 
+        agent_name=WorkflowAgentType.REPORT_GENERATOR,
+        status=WorkflowStatusType.RUNNING
+    )
 
     itinerary = read_file("itinerary.json")
     budget = read_file("budget.json")
@@ -198,10 +235,17 @@ Task:
 5. Save the report to a file named report.md.
 """
     chat_completion = await get_response_from_agent(system_prompt, user_prompt)
-    await response_to_file(chat_completion)
-    
-    update_workflow_status(workflow_id=workflow_id, status=WorkflowStatusType.REPORT_GENERATOR_DONE)
-    
+    response = await to_json(chat_completion=chat_completion)
+
+    if response is None:
+        update_workflow_agent_status(agent_id, WorkflowStatusType.FAILED)
+    else:
+        await save_to_file(response=response)
+        await asyncio.gather(
+            asyncio.to_thread(create_workflow_agent_response, workflow_id, agent_id, response_data=response),
+            asyncio.to_thread(update_workflow_agent_status, agent_id, WorkflowStatusType.COMPLETED),
+        )
+
 async def get_response_from_agent(system_prompt: str, user_prompt: str):
     return await client.chat.completions.create(
         model="openai/gpt-4o-mini-2024-07-18",

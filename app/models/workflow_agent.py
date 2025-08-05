@@ -1,5 +1,5 @@
-from sqlalchemy import Column, Integer, DateTime, ForeignKey
 from datetime import datetime
+from sqlalchemy import Column, Integer, DateTime, ForeignKey, String
 from sqlalchemy.dialects.mysql import ENUM as MySQLEnum
 
 from app.db.db import Base
@@ -15,6 +15,7 @@ class WorkflowAgent(Base):
         nullable=False,
         index=True,
     )
+    agent_name = Column(String(100), nullable=False, index=True)
     status = Column(
         MySQLEnum(*[e.value for e in WorkflowStatusType], name="workflow_status_enum"),
         nullable=False,

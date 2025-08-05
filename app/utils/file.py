@@ -2,7 +2,17 @@ import json
 
 from datetime import datetime
 
-async def response_to_file(chat_completion):
+async def save_to_file(response):
+    with open(response["filename"], "w", encoding="utf-8") as f:
+        f.write(response["content"])
+
+    print(f"✅ File saved to {response['filename']}, time: {datetime.now()}")
+
+def read_file(path: str):
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+    
+async def to_json(chat_completion):
     result = ""
     
     async for chat in chat_completion:
@@ -15,12 +25,4 @@ async def response_to_file(chat_completion):
             print(chat.choices[0].delta.content, end="")
 
     result_json = json.loads(result)
-
-    with open(result_json["filename"], "w", encoding="utf-8") as f:
-        f.write(result_json["content"])
-
-    print(f"✅ File saved to {result_json['filename']}, time: {datetime.now()}")
-
-def read_file(path: str):
-    with open(path, "r", encoding="utf-8") as f:
-        return f.read()
+    return result_json

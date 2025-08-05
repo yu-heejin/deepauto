@@ -20,7 +20,7 @@ class WorkflowAgentResponse(Base):
         nullable=False,
         index=True,
     )
-    response = response = Column(
+    response = Column(
         JSON,
         nullable=True
     )
