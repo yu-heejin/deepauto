@@ -1,12 +1,14 @@
 from fastapi import FastAPI
-from src.agent import data_collector_agent, itinerary_builder_agent, budget_manager_agent, report_generator_agent
 
-app = FastAPI()
+from src.api import agent_api
+from src.db import engine, Base
+from src.model import Workflow
 
-@app.get("/")
-def test_deepauto_ai():
-    data_collector_agent()
-    # TODO: 비동기 처리
-    itinerary_builder_agent()
-    budget_manager_agent()
-    report_generator_agent()
+app = FastAPI(
+    docs_url = "/api/docs",
+    openapi_url = "/api/openapi.json",
+)
+
+Base.metadata.create_all(bind=engine)
+
+app.include_router(agent_api, prefix = "/api/v1")

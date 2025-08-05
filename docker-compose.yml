@@ -1,4 +1,4 @@
-version: '3.8'
+version: '2.4'
 
 services:
   db:
@@ -25,4 +25,5 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
