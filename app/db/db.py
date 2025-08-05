@@ -3,8 +3,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
+from app.core.config import env_config
+
 engine = create_engine(
-    url = "mysql+pymysql://root:deepauto123!@db:3306/deepauto",
+    url = env_config.db_url,
     pool_pre_ping=True,    # 커넥션 유효성 검사
     pool_size = 5,    # database connection pool
     echo = True,     # SQLAlchemy가 실행하는 SQL 쿼리를 콘솔에 출력하도록 설정(개발 단계)

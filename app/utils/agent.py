@@ -1,54 +1,50 @@
-import os
 import asyncio
 
 from openai import AsyncOpenAI
-from dotenv import load_dotenv
 from fastapi import BackgroundTasks
 
-from src.file_util import response_to_file, read_file
-from src.status import WorkflowStatus
-from src.db import connect_database
-from src.crud import update_workflow_status
-from src.model import Workflow
-
-load_dotenv()
+from app.utils.file import response_to_file, read_file
+from app.models.workflow_status import WorkflowStatus
+from app.crud.crud import update_workflow_status, create_workflow_status
+from app.core.config import env_config
 
 client = AsyncOpenAI(
-    base_url="https://api.deepauto.ai/openai/v1",
-    api_key=os.getenv("API"),
+    base_url=env_config.base_url,
+    api_key=env_config.api_key
 )
 
 def start_workflow(background_task: BackgroundTasks):
     """
     agent를 차례대로 실행하는 workflow를 실행시킨다.
-    @return workflow id
+    @param background_task 에이전트를 비동기로 실행되도록 만드는 객체
+    @return workflow_id 실행중인 워크플로우의 아이디
     """
-    workflow = Workflow(status=WorkflowStatus.STARTED.value)
+    workflow_id = create_workflow_status()
 
-    with connect_database() as db:
-        # workflow 시작 상태 저장
-        db.add(workflow)
-        db.commit()
-        db.refresh(workflow)
+    # 백그라운드에서 에이전트 실행
+    background_task.add_task(run_agents, workflow_id)
 
-        # 백그라운드에서 에이전트 실행
-        background_task.add_task(run_agents, workflow.id)
-
-    return workflow.id
+    return workflow_id
 
 async def run_agents(workflow_id: int):
+    """
+    agent를 순서대로 비동기식으로 실행한다.
+    @param workflow_id 실행중인 워크플로우의 아이디
+    """
     await data_collector_agent(workflow_id)
-    
     await asyncio.gather(
         itinerary_builder_agent(workflow_id),
         budget_manager_agent(workflow_id),
     )
-
     await report_generator_agent(workflow_id)
 
     update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.COMPLETED)
 
 async def data_collector_agent(workflow_id: int):
+    """
+    Data Collector Agent 실행 함수
+    @param workflow_id 실행중인 워크플로우의 아이디
+    """
     update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.DATA_COLLECTOR_START)
 
     system_prompt = "You are the Data Collector agent."
@@ -88,6 +84,12 @@ Task:
     update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.DATA_COLLECTOR_DONE)
 
 async def itinerary_builder_agent(workflow_id: int):
+    """
+    Itinerary Builder Agent 실행 함수
+    @param workflow_id 실행중인 워크플로우의 아이디
+    """
+
+    # TODO: 두 경우 동시 실행 시 Lock 문제 확인
     update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.ITINERARY_AND_BUDGET_START)
 
     plan = read_file("itinerary_for_read.json")
@@ -115,9 +117,16 @@ Task:
 
     chat_completion = await get_response_from_agent(system_prompt, user_prompt)
     await response_to_file(chat_completion)
+
     update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.ITINERARY_AND_BUDGET_DONE)
 
 async def budget_manager_agent(workflow_id: int):
+    """
+    Budget Manager Agent 실행 함수
+    @param workflow_id 실행중인 워크플로우의 아이디
+    """
+
+    # TODO: 두 경우 동시 실행 시 Lock 문제 확인
     update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.ITINERARY_AND_BUDGET_START)
 
     plan = read_file("itinerary_for_read.json")
@@ -153,6 +162,10 @@ Task:
     update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.ITINERARY_AND_BUDGET_DONE)
 
 async def report_generator_agent(workflow_id: int):
+    """
+    Report Generator Agent 실행 함수
+    @param workflow_id 실행중인 워크플로우의 아이디
+    """
     update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.REPORT_GENERATOR_START)
 
     itinerary = read_file("itinerary.json")
@@ -186,6 +199,7 @@ Task:
 """
     chat_completion = await get_response_from_agent(system_prompt, user_prompt)
     await response_to_file(chat_completion)
+    
     update_workflow_status(workflow_id=workflow_id, status=WorkflowStatus.REPORT_GENERATOR_DONE)
     
 async def get_response_from_agent(system_prompt: str, user_prompt: str):

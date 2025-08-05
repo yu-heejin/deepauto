@@ -2,8 +2,8 @@ from sqlalchemy import Column, Integer, DateTime, Boolean
 from datetime import datetime
 from sqlalchemy.dialects.mysql import ENUM as MySQLEnum
 
-from src.db import Base
-from src.status import WorkflowStatus
+from app.db.db import Base
+from app.models.workflow_status import WorkflowStatus
 
 class Workflow(Base):
     __tablename__ = "workflow"

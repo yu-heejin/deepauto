@@ -1,4 +1,5 @@
 import json
+
 from datetime import datetime
 
 async def response_to_file(chat_completion):
