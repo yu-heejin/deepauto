@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.api.api import agent_api
+from app.api.workflow import agent_api
 from app.api.websocket import websocket_api
 from app.db.db import engine, Base
 from app.models.workflow import Workflow

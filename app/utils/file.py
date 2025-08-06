@@ -13,20 +13,6 @@ def read_file(path: str):
         return f.read()
     
 async def to_json(chat_completion):
-    # result = ""
-    
-    # async for chat in chat_completion:
-    #     delta = chat.choices[0].delta
-
-    #     if delta.tool_calls is not None and delta.tool_calls[0].function is not None:
-    #         result += delta.tool_calls[0].function.arguments or ""
-
-    #     if chat.choices[0].delta.content is not None:
-    #         print(chat.choices[0].delta.content, end="")
-
-    # result_json = json.loads(result)
-    # return result_json
-
     result = ""
 
     async for chunk in chat_completion:
