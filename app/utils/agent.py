@@ -48,7 +48,6 @@ async def run_agents(workflow_id: int):
         await asyncio.gather(
             itinerary_builder_agent(workflow_id),
             budget_manager_agent(workflow_id),
-            return_exceptions=True
         )
         await report_generator_agent(workflow_id)
     except Exception as e:
