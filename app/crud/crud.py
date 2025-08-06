@@ -25,6 +25,8 @@ def update_workflow_status(workflow_id: int, status: WorkflowStatusType):
     """
     workflow 상태를 수정한다.
     상태에는 RUNNING, COMPLETED, FAILD가 있다.
+    @param workflow_id 상태 변경할 워크플로우 아이디
+    @param status 변경할 상태값
     """
     with connect_database() as db:
         workflow = db.query(Workflow).filter(Workflow.id == workflow_id).first()
@@ -38,6 +40,9 @@ def update_workflow_status(workflow_id: int, status: WorkflowStatusType):
 def create_workflow_agent(workflow_id: int, agent_name: WorkflowAgentType, status: WorkflowStatusType):
     """
     workflow 내부에서 실행중인 agent 정보를 저장한다.
+    @param workflow_id 에이전트의 워크플로우 아이디
+    @param agent_name 해당 워크플로우에서 실행할 에이전트 이름
+    @param status 추가할 상태
     @return agent_id 생성된 에이전트 아이디
     """
     workflow_agent = WorkflowAgent(
@@ -57,6 +62,8 @@ def update_workflow_agent_status(agent_id: int, status: WorkflowStatusType):
     """
     에이전트의 상태를 업데이트한다.
     상태에는 RUNNING, COMPLETED, FAIL이 있다.
+    @param agent_id 상태 변경할 에이전트 아이디
+    @param status 변경할 상태
     """
     with connect_database() as db:
         agent = db.query(WorkflowAgent).filter(WorkflowAgent.id == agent_id).first()
@@ -66,14 +73,17 @@ def update_workflow_agent_status(agent_id: int, status: WorkflowStatusType):
             db.commit()
             db.refresh(agent)
 
-def create_workflow_agent_response(workflow_id: int, workflow_agent_id: int, response_data: dict):
+def create_workflow_agent_response(workflow_id: int, agent_id: int, response_data: dict):
     """
     에이전트가 생성한 응답을 저장한다.
+    @param workflow_id 에이전트의 워크플로우 아이디
+    @param agent_id 워크플로우 아이디
+    @param response_data 응답 데이터
     @return agent_response_id 생성된 응답 아이디
     """
     agent_response = WorkflowAgentResponse(
         workflow_id=workflow_id,
-        workflow_agent_id=workflow_agent_id,
+        workflow_agent_id=agent_id,
         response=response_data
     )
     
@@ -87,6 +97,7 @@ def create_workflow_agent_response(workflow_id: int, workflow_agent_id: int, res
 def get_workflow_status(workflow_id: int):
     """
     workflow 상태 정보를 가져온다.
+    @param workflow_id 워크플로우 아이디
     @return result workflow의 현재 상태, 시작 시간과 마지막 상태 수정 시간
     """
     with connect_database() as db:
@@ -103,6 +114,7 @@ def get_workflow_status(workflow_id: int):
 def get_workflow_agent_response(workflow_id: int):
     """
     workflow agent의 응답들을 받아온다.
+    @param workflow_id 워크플로우 아이디
     @return results 해당 워크플로우에서 생성된 모든 에이전트들의 응답
     """
     with connect_database() as db:

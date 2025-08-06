@@ -3,16 +3,28 @@ import json
 from datetime import datetime
 
 async def save_to_file(response):
+    """
+    json 응답을 파일로 변환해 저장하는 함수
+    @param response json 객체
+    """
     with open(response["filename"], "w", encoding="utf-8") as f:
         f.write(response["content"])
 
     print(f"✅ File saved to {response['filename']}, time: {datetime.now()}")
 
 def read_file(path: str):
+    """
+    파일 내용을 읽는 함수
+    @param path 파일 경로
+    """
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
     
 async def to_json(chat_completion):
+    """
+    에이전트 클라이언트 응답을 JSON으로 변환하는 함수
+    @param chat_completion 에이전트 응답
+    """
     result = ""
 
     async for chunk in chat_completion:

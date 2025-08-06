@@ -41,7 +41,8 @@ async def connect(websocket: WebSocket, workflow_id: int):
 
 async def disconnect(websocket: WebSocket, workflow_id: int):
     """
-    WebSocket 연결을 종료하고 관리 목록에서 제거
+    WebSocket 연결을 종료하고 관리 목록에서 제거하는 함수
+    @param workflow_id 연결된 소캣 워크플로우 id
     """
     if workflow_id in active_connections:
         if websocket in active_connections[workflow_id]:
@@ -54,7 +55,8 @@ async def disconnect(websocket: WebSocket, workflow_id: int):
 
 async def send_existing_data(websocket: WebSocket, workflow_id: int):
     """
-    기존에 저장된 workflow 데이터를 전송
+    기존에 저장된 workflow 데이터를 전송하는 함수
+    @param workflow_id 메시지를 전송할 워크플로우 id
     """
     try:
         workflow = get_workflow_status(workflow_id)
@@ -71,7 +73,9 @@ async def send_existing_data(websocket: WebSocket, workflow_id: int):
 
 async def broadcast_to_workflow(workflow_id: int, data: Dict[str, Any]):
     """
-    특정 workflow_id에 연결된 모든 클라이언트에게 데이터를 broadcast
+    특정 workflow_id에 연결된 모든 클라이언트에게 데이터를 broadcast하는 함수
+    @param workflow_id 메시지를 전송할 브로드캐스트 id
+    @param data 메시지 데이터
     """
     if workflow_id not in active_connections:
         return
@@ -95,9 +99,12 @@ async def broadcast_to_workflow(workflow_id: int, data: Dict[str, Any]):
     if not active_connections[workflow_id]:
         del active_connections[workflow_id]
 
-async def broadcast_agent_status(workflow_id: int, agent_id: int, agent_name: WorkflowAgentType, status: WorkflowStatusType):
+async def broadcast_agent_status(workflow_id: int, agent_name: WorkflowAgentType, status: WorkflowStatusType):
     """
-    Agent 상태 변경을 broadcast
+    Agent 상태 변경을 broadcast하는 함수
+    @param workflow_id 상태 변경 내용을 보낼 워크플로우 id
+    @param agent_name 실행된 에이전트 이름
+    @param status 에이전트 상태
     """
     data = {
         "agent_name": agent_name.value,
@@ -106,20 +113,12 @@ async def broadcast_agent_status(workflow_id: int, agent_id: int, agent_name: Wo
     }
     await broadcast_to_workflow(workflow_id, data)
 
-async def broadcast_agent_response_chunk(workflow_id: int, agent_id: int, agent_name: str, chunk: str):
+async def broadcast_agent_complete_response(workflow_id: int, agent_name: WorkflowAgentType, response_data: Any):
     """
-    Agent 응답 스트림 chunk를 broadcast
-    """
-    data = {
-        "agent_name": agent_name,
-        "chunk": chunk,
-        "timestamp": datetime.now().isoformat()
-    }
-    await broadcast_to_workflow(workflow_id, data)
-
-async def broadcast_agent_complete_response(workflow_id: int, agent_id: int, agent_name: WorkflowAgentType, response_data: Any):
-    """
-    Agent 완전한 응답을 broadcast
+    Agent의 응답을 broadcast하는 함수
+    @param workflow_id 응답을 보낼 워크플로우 id
+    @param agent_name 실행된 에이전트 이름
+    @param response_data 응답 내용
     """
     data = {
         "agent_name": agent_name.value,
@@ -130,7 +129,9 @@ async def broadcast_agent_complete_response(workflow_id: int, agent_id: int, age
 
 async def broadcast_workflow_status(workflow_id: int, status: WorkflowStatusType):
     """
-    Workflow 상태 변경을 broadcast
+    Workflow의 상태를 broadcast하는 함수
+    @param workflow_id 상태 변경 내용을 보낼 워크플로우 id
+    @param status 에이전트 상태
     """
     data = {
         "status": status.value,

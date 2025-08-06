@@ -17,7 +17,10 @@ from app.utils.websocket import (
 )
 
 def create_client():
-    """Create a new AsyncOpenAI client instance for each request"""
+    """
+    OpenAI 클라이언트 생성
+    @return AsyncOpenAI 객체
+    """
     return AsyncOpenAI(
         base_url=env_config.base_url,
         api_key=env_config.api_key
@@ -74,7 +77,7 @@ async def data_collector_agent(workflow_id: int):
             agent_name=WorkflowAgentType.DATA_COLLECTOR,
             status=WorkflowStatusType.RUNNING
         )
-        await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.DATA_COLLECTOR, WorkflowStatusType.RUNNING)
+        await broadcast_agent_status(workflow_id, WorkflowAgentType.DATA_COLLECTOR, WorkflowStatusType.RUNNING)
         
         # Agent 시작 상태 브로드캐스트
         
@@ -115,7 +118,7 @@ async def data_collector_agent(workflow_id: int):
         response = await to_json(chat_completion)
         if response is None:
             update_workflow_agent_status(agent_id, WorkflowStatusType.FAILED)
-            await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.DATA_COLLECTOR, WorkflowStatusType.FAILED)
+            await broadcast_agent_status(workflow_id, WorkflowAgentType.DATA_COLLECTOR, WorkflowStatusType.FAILED)
         else:
             await save_to_file(response=response)
             await asyncio.gather(
@@ -124,11 +127,11 @@ async def data_collector_agent(workflow_id: int):
             )
             
             # 완료된 응답 브로드캐스트
-            await broadcast_agent_complete_response(workflow_id, agent_id, WorkflowAgentType.DATA_COLLECTOR, response)
-            await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.DATA_COLLECTOR, WorkflowStatusType.COMPLETED)
+            await broadcast_agent_complete_response(workflow_id, WorkflowAgentType.DATA_COLLECTOR, response)
+            await broadcast_agent_status(workflow_id, WorkflowAgentType.DATA_COLLECTOR, WorkflowStatusType.COMPLETED)
     except Exception as e:
         update_workflow_agent_status(agent_id, WorkflowStatusType.FAILED)
-        await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.DATA_COLLECTOR, WorkflowStatusType.FAILED)
+        await broadcast_agent_status(workflow_id, WorkflowAgentType.DATA_COLLECTOR, WorkflowStatusType.FAILED)
         raise Exception(f"[ERROR] Data Collector Agent Error: {e}")
 
 async def itinerary_builder_agent(workflow_id: int):
@@ -144,7 +147,7 @@ async def itinerary_builder_agent(workflow_id: int):
             status=WorkflowStatusType.RUNNING
         )
         # Agent 시작 상태 브로드캐스트
-        await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.ITINERARY_BUILDER, WorkflowStatusType.RUNNING)
+        await broadcast_agent_status(workflow_id, WorkflowAgentType.ITINERARY_BUILDER, WorkflowStatusType.RUNNING)
 
         plan = read_file(f"itinerary_for_read_{workflow_id}.json")
         system_prompt = "You are the Itinerary Builder agent."
@@ -175,7 +178,7 @@ async def itinerary_builder_agent(workflow_id: int):
         
         if response is None:
             update_workflow_agent_status(agent_id, WorkflowStatusType.FAILED)
-            await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.ITINERARY_BUILDER, WorkflowStatusType.FAILED)
+            await broadcast_agent_status(workflow_id, WorkflowAgentType.ITINERARY_BUILDER, WorkflowStatusType.FAILED)
         else:
             await save_to_file(response=response)
             # 에이전트 응답 저장
@@ -185,11 +188,11 @@ async def itinerary_builder_agent(workflow_id: int):
             )
             
             # 완료된 응답 브로드캐스트
-            await broadcast_agent_complete_response(workflow_id, agent_id, WorkflowAgentType.ITINERARY_BUILDER, response)
-            await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.ITINERARY_BUILDER, WorkflowStatusType.COMPLETED)
+            await broadcast_agent_complete_response(workflow_id, WorkflowAgentType.ITINERARY_BUILDER, response)
+            await broadcast_agent_status(workflow_id, WorkflowAgentType.ITINERARY_BUILDER, WorkflowStatusType.COMPLETED)
     except Exception as e:
         update_workflow_agent_status(agent_id, WorkflowStatusType.FAILED)
-        await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.ITINERARY_BUILDER, WorkflowStatusType.FAILED)
+        await broadcast_agent_status(workflow_id, WorkflowAgentType.ITINERARY_BUILDER, WorkflowStatusType.FAILED)
         raise Exception(f"[ERROR] Itinerary Builder Agent Error: {e}")
 
 async def budget_manager_agent(workflow_id: int):
@@ -205,7 +208,7 @@ async def budget_manager_agent(workflow_id: int):
             status=WorkflowStatusType.RUNNING
         )
         # Agent 시작 상태 브로드캐스트
-        await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.BUDGET_MANAGER, WorkflowStatusType.RUNNING)
+        await broadcast_agent_status(workflow_id, WorkflowAgentType.BUDGET_MANAGER, WorkflowStatusType.RUNNING)
 
         plan = read_file(f"itinerary_for_read_{workflow_id}.json")
         system_prompt = "You are the Budget Manager agent."
@@ -240,7 +243,7 @@ async def budget_manager_agent(workflow_id: int):
         
         if response is None:
             update_workflow_agent_status(agent_id, WorkflowStatusType.FAILED)
-            await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.BUDGET_MANAGER, WorkflowStatusType.FAILED)
+            await broadcast_agent_status(workflow_id, WorkflowAgentType.BUDGET_MANAGER, WorkflowStatusType.FAILED)
         else:
             await save_to_file(response=response)
             await asyncio.gather(
@@ -249,11 +252,11 @@ async def budget_manager_agent(workflow_id: int):
             )
             
             # 완료된 응답 브로드캐스트
-            await broadcast_agent_complete_response(workflow_id, agent_id, WorkflowAgentType.BUDGET_MANAGER, response)
-            await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.BUDGET_MANAGER, WorkflowStatusType.COMPLETED)
+            await broadcast_agent_complete_response(workflow_id, WorkflowAgentType.BUDGET_MANAGER, response)
+            await broadcast_agent_status(workflow_id, WorkflowAgentType.BUDGET_MANAGER, WorkflowStatusType.COMPLETED)
     except Exception as e:
         update_workflow_agent_status(agent_id, WorkflowStatusType.FAILED)
-        await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.BUDGET_MANAGER, WorkflowStatusType.FAILED)
+        await broadcast_agent_status(workflow_id, WorkflowAgentType.BUDGET_MANAGER, WorkflowStatusType.FAILED)
         raise Exception(f"[ERROR] Budget Manager Agent Error: {e}")
 
 async def report_generator_agent(workflow_id: int):
@@ -269,7 +272,7 @@ async def report_generator_agent(workflow_id: int):
             status=WorkflowStatusType.RUNNING
         )
         # Agent 시작 상태 브로드캐스트
-        await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.REPORT_GENERATOR, WorkflowStatusType.RUNNING)
+        await broadcast_agent_status(workflow_id, WorkflowAgentType.REPORT_GENERATOR, WorkflowStatusType.RUNNING)
 
         itinerary = read_file(f"itinerary_{workflow_id}.json")
         budget = read_file(f"budget_{workflow_id}.json")
@@ -307,7 +310,7 @@ async def report_generator_agent(workflow_id: int):
 
         if response is None:
             update_workflow_agent_status(agent_id, WorkflowStatusType.FAILED)
-            await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.REPORT_GENERATOR, WorkflowStatusType.FAILED)
+            await broadcast_agent_status(workflow_id, WorkflowAgentType.REPORT_GENERATOR, WorkflowStatusType.FAILED)
         else:
             await save_to_file(response=response)
             await asyncio.gather(
@@ -316,8 +319,8 @@ async def report_generator_agent(workflow_id: int):
             )
             
             # 완료된 응답 브로드캐스트
-            await broadcast_agent_complete_response(workflow_id, agent_id, WorkflowAgentType.REPORT_GENERATOR, response)
-            await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.REPORT_GENERATOR, WorkflowStatusType.COMPLETED)
+            await broadcast_agent_complete_response(workflow_id, WorkflowAgentType.REPORT_GENERATOR, response)
+            await broadcast_agent_status(workflow_id, WorkflowAgentType.REPORT_GENERATOR, WorkflowStatusType.COMPLETED)
             
             # 결과 보고서 출력
             report_content = read_file(f"/deepauto/report_{workflow_id}.md")
@@ -331,10 +334,15 @@ async def report_generator_agent(workflow_id: int):
                 await broadcast_to_workflow(workflow_id, report_data)
     except Exception as e:
         update_workflow_agent_status(agent_id, WorkflowStatusType.FAILED)
-        await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.REPORT_GENERATOR, WorkflowStatusType.FAILED)
+        await broadcast_agent_status(workflow_id, WorkflowAgentType.REPORT_GENERATOR, WorkflowStatusType.FAILED)
         raise Exception(f"[ERROR] Report Generator Agent Error: {e}")
 
 async def get_response_from_agent(system_prompt: str, user_prompt: str):
+    """
+    에이전트로 부터 응답을 받는 클라이언트 함수
+    @param system_prompt 역할 프롬프트
+    @param user_prompt 명령 프롬프트
+    """
     client = create_client()
     return await client.chat.completions.create(
         model="openai/gpt-4o-mini-2024-07-18",
