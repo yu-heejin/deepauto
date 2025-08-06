@@ -46,7 +46,7 @@ async def disconnect(websocket: WebSocket, workflow_id: int):
     if workflow_id in active_connections:
         if websocket in active_connections[workflow_id]:
             active_connections[workflow_id].remove(websocket)
-            print(f"WebSocket disconnected for workflow {workflow_id}")
+            print(f"[ERROR] WebSocket disconnected for workflow {workflow_id}")
         
         # 해당 workflow_id에 더 이상 연결이 없으면 키 삭제
         if not active_connections[workflow_id]:
@@ -67,7 +67,7 @@ async def send_existing_data(websocket: WebSocket, workflow_id: int):
 
         await websocket.send_text(json.dumps(data, ensure_ascii=False))
     except Exception as e:
-        print(f"Error sending existing data: {e}")
+        print(f"[ERROR] Error sending existing data: {e}")
 
 async def broadcast_to_workflow(workflow_id: int, data: Dict[str, Any]):
     """
@@ -83,7 +83,7 @@ async def broadcast_to_workflow(workflow_id: int, data: Dict[str, Any]):
         try:
             await websocket.send_text(json.dumps(data, ensure_ascii=False))
         except Exception as e:
-            print(f"Error broadcasting to websocket: {e}")
+            print(f"[ERROR] Error broadcasting to websocket: {e}")
             disconnected_sockets.append(websocket)
     
     # 끊어진 연결들을 제거

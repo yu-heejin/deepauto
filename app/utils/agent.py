@@ -16,10 +16,12 @@ from app.utils.websocket import (
     broadcast_to_workflow
 )
 
-client = AsyncOpenAI(
-    base_url=env_config.base_url,
-    api_key=env_config.api_key
-)
+def create_client():
+    """Create a new AsyncOpenAI client instance for each request"""
+    return AsyncOpenAI(
+        base_url=env_config.base_url,
+        api_key=env_config.api_key
+    )
 
 def start_workflow(background_task: BackgroundTasks):
     """
@@ -51,7 +53,7 @@ async def run_agents(workflow_id: int):
         )
         await report_generator_agent(workflow_id)
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"[ERROR] {e}")
         update_workflow_status(workflow_id=workflow_id, status=WorkflowStatusType.FAILED)
         await broadcast_workflow_status(workflow_id, WorkflowStatusType.FAILED)
         return
@@ -127,7 +129,7 @@ async def data_collector_agent(workflow_id: int):
     except Exception as e:
         update_workflow_agent_status(agent_id, WorkflowStatusType.FAILED)
         await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.DATA_COLLECTOR, WorkflowStatusType.FAILED)
-        raise Exception(f"Data Collector Agent Error: {e}")
+        raise Exception(f"[ERROR] Data Collector Agent Error: {e}")
 
 async def itinerary_builder_agent(workflow_id: int):
     """
@@ -188,7 +190,7 @@ async def itinerary_builder_agent(workflow_id: int):
     except Exception as e:
         update_workflow_agent_status(agent_id, WorkflowStatusType.FAILED)
         await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.ITINERARY_BUILDER, WorkflowStatusType.FAILED)
-        raise Exception(f"Itinerary Builder Agent Error: {e}")
+        raise Exception(f"[ERROR] Itinerary Builder Agent Error: {e}")
 
 async def budget_manager_agent(workflow_id: int):
     """
@@ -252,7 +254,7 @@ async def budget_manager_agent(workflow_id: int):
     except Exception as e:
         update_workflow_agent_status(agent_id, WorkflowStatusType.FAILED)
         await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.BUDGET_MANAGER, WorkflowStatusType.FAILED)
-        raise Exception(f"Budget Manager Agent Error: {e}")
+        raise Exception(f"[ERROR] Budget Manager Agent Error: {e}")
 
 async def report_generator_agent(workflow_id: int):
     """
@@ -330,9 +332,10 @@ async def report_generator_agent(workflow_id: int):
     except Exception as e:
         update_workflow_agent_status(agent_id, WorkflowStatusType.FAILED)
         await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.REPORT_GENERATOR, WorkflowStatusType.FAILED)
-        raise Exception(f"Report Generator Agent Error: {e}")
+        raise Exception(f"[ERROR] Report Generator Agent Error: {e}")
 
 async def get_response_from_agent(system_prompt: str, user_prompt: str):
+    client = create_client()
     return await client.chat.completions.create(
         model="openai/gpt-4o-mini-2024-07-18",
         messages=[

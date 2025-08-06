@@ -16,21 +16,26 @@ async def to_json(chat_completion):
     result = ""
 
     async for chunk in chat_completion:
+        if not chunk.choices:
+            continue
+            
         delta = chunk.choices[0].delta
 
         # tool_calls 처리 (현재 OpenAI API 표준)
         if getattr(delta, "tool_calls", None):
-            for call in delta.tool_calls:
+            for call in delta.tool_calls:     
                 if getattr(call, "function", None) and getattr(call.function, "arguments", None):
                     result += call.function.arguments
+        
+        # 일반 텍스트 출력 (디버깅용)
         if delta.content:
             print(delta.content, end="")
 
     if not result:
-        raise ValueError("LLM이 함수 호출을 통해 JSON을 반환하지 않았습니다.")
+        raise ValueError("[ERROR] result가 없습니다.")
 
     try:
         return json.loads(result)
     except json.JSONDecodeError as e:
         # 디버깅을 위해 누적된 문자열을 함께 띄워 줍니다
-        raise ValueError(f"JSON 파싱 실패: {e.msg}\n원본: {result!r}") from e
+        raise ValueError(f"[ERROR] JSON Parssing Error: {e.msg}") from e
