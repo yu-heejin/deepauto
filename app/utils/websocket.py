@@ -6,6 +6,8 @@ from typing import Dict, List, Any
 from fastapi import WebSocket, WebSocketDisconnect
 
 from app.crud.crud import get_workflow_status, get_workflow_agent_response
+from app.models.workflow_status_type import WorkflowStatusType
+from app.models.workflow_agent_type import WorkflowAgentType
 
 # workflow_id별로 연결된 WebSocket 클라이언트들을 관리
 active_connections: Dict[int, List[WebSocket]] = {}
@@ -93,13 +95,13 @@ async def broadcast_to_workflow(workflow_id: int, data: Dict[str, Any]):
     if not active_connections[workflow_id]:
         del active_connections[workflow_id]
 
-async def broadcast_agent_status(workflow_id: int, agent_id: int, agent_name: str, status: str):
+async def broadcast_agent_status(workflow_id: int, agent_id: int, agent_name: WorkflowAgentType, status: WorkflowStatusType):
     """
     Agent 상태 변경을 broadcast
     """
     data = {
-        "agent_name": agent_name,
-        "status": status,
+        "agent_name": agent_name.value,
+        "status": status.value,
         "timestamp": datetime.now().isoformat()
     }
     await broadcast_to_workflow(workflow_id, data)
@@ -115,23 +117,23 @@ async def broadcast_agent_response_chunk(workflow_id: int, agent_id: int, agent_
     }
     await broadcast_to_workflow(workflow_id, data)
 
-async def broadcast_agent_complete_response(workflow_id: int, agent_id: int, agent_name: str, response_data: Any):
+async def broadcast_agent_complete_response(workflow_id: int, agent_id: int, agent_name: WorkflowAgentType, response_data: Any):
     """
     Agent 완전한 응답을 broadcast
     """
     data = {
-        "agent_name": agent_name,
+        "agent_name": agent_name.value,
         "response_data": response_data,
         "timestamp": datetime.now().isoformat()
     }
     await broadcast_to_workflow(workflow_id, data)
 
-async def broadcast_workflow_status(workflow_id: int, status: str):
+async def broadcast_workflow_status(workflow_id: int, status: WorkflowStatusType):
     """
     Workflow 상태 변경을 broadcast
     """
     data = {
-        "status": status,
+        "status": status.value,
         "timestamp": datetime.now().isoformat()
     }
     await broadcast_to_workflow(workflow_id, data)
