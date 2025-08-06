@@ -17,6 +17,12 @@
 docker-compose up -d
 ```
 
+* 소스 코드나 파일에 변경이 생긴 경우, 아래 명령어 실행
+
+```
+docker-compose up -d --build
+```
+
 ## API 실행 결과
 
 `POST /workflows` 
