@@ -9,6 +9,10 @@
 
 ## 실행 방법
 
+1. 현재 repository 상위에 .env 파일 생성
+
+2. 명령어 실행
+
 ```
 docker-compose up -d
 ```
