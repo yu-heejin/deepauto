@@ -1,6 +1,10 @@
 import json
+import os
+import aiofiles
+import asyncio
 
 from datetime import datetime
+from pathlib import Path
 
 async def save_to_file(response):
     """
@@ -12,13 +16,13 @@ async def save_to_file(response):
 
     print(f"✅ File saved to {response['filename']}, time: {datetime.now()}")
 
-def read_file(path: str):
+async def read_file(path: str):
     """
-    파일 내용을 읽는 함수
+    파일 내용을 읽는 비동기 함수
     @param path 파일 경로
     """
-    with open(path, "r", encoding="utf-8") as f:
-        return f.read()
+    async with aiofiles.open(path, "r", encoding="utf-8") as f:
+        return await f.read()
     
 async def to_json(chat_completion):
     """

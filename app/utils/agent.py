@@ -149,7 +149,7 @@ async def itinerary_builder_agent(workflow_id: int):
         # Agent 시작 상태 브로드캐스트
         await broadcast_agent_status(workflow_id, WorkflowAgentType.ITINERARY_BUILDER, WorkflowStatusType.RUNNING)
 
-        plan = read_file(f"itinerary_for_read_{workflow_id}.json")
+        plan = await read_file(f"itinerary_for_read_{workflow_id}.json")
         system_prompt = "You are the Itinerary Builder agent."
         user_prompt = f"""
     Input:
@@ -210,7 +210,7 @@ async def budget_manager_agent(workflow_id: int):
         # Agent 시작 상태 브로드캐스트
         await broadcast_agent_status(workflow_id, WorkflowAgentType.BUDGET_MANAGER, WorkflowStatusType.RUNNING)
 
-        plan = read_file(f"itinerary_for_read_{workflow_id}.json")
+        plan = await read_file(f"itinerary_for_read_{workflow_id}.json")
         system_prompt = "You are the Budget Manager agent."
         user_prompt = f"""
     Input:
@@ -274,8 +274,8 @@ async def report_generator_agent(workflow_id: int):
         # Agent 시작 상태 브로드캐스트
         await broadcast_agent_status(workflow_id, WorkflowAgentType.REPORT_GENERATOR, WorkflowStatusType.RUNNING)
 
-        itinerary = read_file(f"itinerary_{workflow_id}.json")
-        budget = read_file(f"budget_{workflow_id}.json")
+        itinerary = await read_file(f"itinerary_{workflow_id}.json")
+        budget = await read_file(f"budget_{workflow_id}.json")
 
         system_prompt = (
             "You are the Report Generator agent. "
@@ -323,7 +323,7 @@ async def report_generator_agent(workflow_id: int):
             await broadcast_agent_status(workflow_id, WorkflowAgentType.REPORT_GENERATOR, WorkflowStatusType.COMPLETED)
             
             # 결과 보고서 출력
-            report_content = read_file(f"/deepauto/report_{workflow_id}.md")
+            report_content = await read_file(f"/deepauto/report_{workflow_id}.md")
             if report_content:
                 # 보고서를 웹소켓으로 실시간 전송
                 report_data = {
