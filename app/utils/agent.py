@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 
 from openai import AsyncOpenAI
 from fastapi import BackgroundTasks
@@ -11,7 +12,8 @@ from app.core.config import env_config
 from app.utils.websocket import (
     broadcast_agent_status, 
     broadcast_agent_complete_response,
-    broadcast_workflow_status
+    broadcast_workflow_status,
+    broadcast_to_workflow
 )
 
 client = AsyncOpenAI(
@@ -76,7 +78,7 @@ async def data_collector_agent(workflow_id: int):
         # Agent 시작 상태 브로드캐스트
         
         system_prompt = "You are the Data Collector agent."
-        user_prompt = """
+        user_prompt = f"""
     Input:
     ```json
     total_budget: 3000 USD
@@ -95,17 +97,17 @@ async def data_collector_agent(workflow_id: int):
         - Major attraction hours, public holidays, and festival dates
         - 5-day weather forecasts for Tokyo, Kyoto, Osaka
     2. Aggregate into JSON:
-        {
-            "preferences": { …fixed… },
+        {{
+            "preferences": {{ …fixed… }},
             "flights": [ … ],
             "hotels": [ … ],
-            "transport": { … },
+            "transport": {{ … }},
             "attractions": [ … ],
             "weather": [ … ]
-        }
+        }}
     3. Show all the steps and the reasoning process.
-    4. Save this JSON to a file named itinerary_for_read.json.
-    5. Save this JSON to a file named "itinerary_for_read.json" and do not call the function again.  
+    4. Save this JSON to a file named {f'itinerary_for_read_{workflow_id}.json'}.
+    5. Save this JSON to a file named "{f'itinerary_for_read_{workflow_id}.json'}" and do not call the function again.  
     """
         
         chat_completion = await get_response_from_agent(system_prompt, user_prompt)
@@ -143,7 +145,7 @@ async def itinerary_builder_agent(workflow_id: int):
         # Agent 시작 상태 브로드캐스트
         await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.ITINERARY_BUILDER, WorkflowStatusType.RUNNING)
 
-        plan = read_file("itinerary_for_read.json")
+        plan = read_file(f"itinerary_for_read_{workflow_id}.json")
         system_prompt = "You are the Itinerary Builder agent."
         user_prompt = f"""
     Input:
@@ -163,8 +165,8 @@ async def itinerary_builder_agent(workflow_id: int):
             "day5": {{ … }}
         }}
     5. Show all the steps and the reasoning process.
-    6. Save this JSON to a file named itinerary.json.
-    7. Save this JSON to a file named "itinerary.json" and do not call the function again.
+    6. Save this JSON to a file named {f'itinerary_{workflow_id}.json'}.
+    7. Save this JSON to a file named "{f'itinerary_{workflow_id}.json'}." and do not call the function again.
     """
         
         chat_completion = await get_response_from_agent(system_prompt, user_prompt)
@@ -204,7 +206,7 @@ async def budget_manager_agent(workflow_id: int):
         # Agent 시작 상태 브로드캐스트
         await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.BUDGET_MANAGER, WorkflowStatusType.RUNNING)
 
-        plan = read_file("itinerary_for_read.json")
+        plan = read_file(f"itinerary_for_read_{workflow_id}.json")
         system_prompt = "You are the Budget Manager agent."
         user_prompt = f"""
     Input:
@@ -229,8 +231,8 @@ async def budget_manager_agent(workflow_id: int):
         "alternatives": [ … ]
     }}
     5. Show all the steps and the reasoning process.
-    6. Save this JSON to a file named budget.json.
-    7.Save this JSON to a file named "budget.json" and do not call the function again.
+    6. Save this JSON to a file named {f'budget_{workflow_id}.json'}.
+    7.Save this JSON to a file named "{f'budget_{workflow_id}.json'}." and do not call the function again.
     """
         chat_completion = await get_response_from_agent(system_prompt, user_prompt)    
         response = await to_json(chat_completion=chat_completion)
@@ -268,8 +270,8 @@ async def report_generator_agent(workflow_id: int):
         # Agent 시작 상태 브로드캐스트
         await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.REPORT_GENERATOR, WorkflowStatusType.RUNNING)
 
-        itinerary = read_file("itinerary.json")
-        budget = read_file("budget.json")
+        itinerary = read_file(f"itinerary_{workflow_id}.json")
+        budget = read_file(f"budget_{workflow_id}.json")
 
         system_prompt = (
             "You are the Report Generator agent. "
@@ -295,8 +297,8 @@ async def report_generator_agent(workflow_id: int):
         - Must-see spots
         - Onsen & temple visit recommendations
     4. Show all the steps and the reasoning process.
-    5. Save the report to a file named report.md.
-    6. Save this JSON to a file named "report.md" and do not call the function again.
+    5. Save the report to a file named {f'report_{workflow_id}.md'}.
+    6. Save this JSON to a file named "{f'report_{workflow_id}.md'}." and do not call the function again.
     """
         
         chat_completion = await get_response_from_agent(system_prompt, user_prompt)
@@ -315,6 +317,17 @@ async def report_generator_agent(workflow_id: int):
             # 완료된 응답 브로드캐스트
             await broadcast_agent_complete_response(workflow_id, agent_id, WorkflowAgentType.REPORT_GENERATOR, response)
             await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.REPORT_GENERATOR, WorkflowStatusType.COMPLETED)
+            
+            # 결과 보고서 출력
+            report_content = read_file(f"/deepauto/report_{workflow_id}.md")
+            if report_content:
+                # 보고서를 웹소켓으로 실시간 전송
+                report_data = {
+                    "workflow_id": workflow_id,
+                    "report": report_content,
+                    "timestamp": datetime.now().isoformat()
+                }
+                await broadcast_to_workflow(workflow_id, report_data)
     except Exception as e:
         update_workflow_agent_status(agent_id, WorkflowStatusType.FAILED)
         await broadcast_agent_status(workflow_id, agent_id, WorkflowAgentType.REPORT_GENERATOR, WorkflowStatusType.FAILED)
