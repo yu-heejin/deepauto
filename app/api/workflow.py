@@ -12,7 +12,3 @@ agent_api = APIRouter(
 def test_deepauto_ai(background_task: BackgroundTasks):
     id = start_workflow(background_task)
     return { "status": 201, "data": { "id": id } }
-
-@agent_api.websocket("/ws/{workflow_id}")
-async def deepauto_ai_websocket(websocket: WebSocket, workflow_id: int):
-    await connect(websocket, workflow_id)

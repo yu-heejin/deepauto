@@ -31,21 +31,14 @@ async def to_json(chat_completion):
     """
     result = ""
 
-    async for chunk in chat_completion:
-        if not chunk.choices:
-            continue
-            
-        delta = chunk.choices[0].delta
+    async for chat in chat_completion:
+        delta = chat.choices[0].delta
 
-        # tool_calls 처리 (현재 OpenAI API 표준)
-        if getattr(delta, "tool_calls", None):
-            for call in delta.tool_calls:     
-                if getattr(call, "function", None) and getattr(call.function, "arguments", None):
-                    result += call.function.arguments
-        
-        # 일반 텍스트 출력 (디버깅용)
-        if delta.content:
-            print(delta.content, end="")
+        if delta.tool_calls is not None and delta.tool_calls[0].function is not None:
+            result += delta.tool_calls[0].function.arguments or ""
+
+        if chat.choices[0].delta.content is not None:
+            print(chat.choices[0].delta.content, end="")
 
     if not result:
         raise ValueError("[ERROR] result가 없습니다.")
